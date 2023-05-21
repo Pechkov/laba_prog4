@@ -1,0 +1,80 @@
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "header.h"
+#include "strings.h"
+
+char *input(char *delim) {
+  char *path = (char *)malloc(MAX_STRING);
+  printf("delim: ");
+  scanf("%c", delim);
+  printf("\npath: ");
+  scanf("%s", path);
+  printf("\n");
+  return path;
+}
+
+/*\	разделитель подкаталогов
+/	ключи командного интерпретатора
+:	отделяет букву диска в Windows-путях
+*	заменяющий символ (маска «любое количество любых символов»)
+?	заменяющий символ (маска «один любой символ»)
+«	используется для указания путей, содержащих пробелы
+<	обозначение перенаправления ввода
+>	обозначение перенаправления вывода
+|	обозначение программного конвейера*/
+int is_correct_symbol(char symbol) {
+  char symbols[] = ":*?«<>|\\";
+  for (size_t i = 0; i < slen(symbols); i++) {
+    if (symbols[i] == symbol)
+      return 1;
+  }
+  return 0;
+}
+
+int check(char *path, char *result, char delim) {
+  char *output[12];
+  int count = stok(path, delim, output);
+  for (int i = 0; i < count; i++) {
+    if (slen(output[i]) > MAX_PATH) {
+      scpy(result, output[i]);
+      scpy(&result[slen(output[i])], "\n^\nError, path is too long");
+      return Error_Length;
+    }
+    else if (output[i][0] != '/') {
+      scpy(result, output[i]);
+      scpy(&result[slen(output[i])], "\n^\nError, expected '/'");
+      return Error_String;
+    }
+  }
+  for (size_t i = 0; i < slen(path); i++) {
+    if (is_correct_symbol(path[i])) {
+      scpy(result, &path[i]);
+      scpy(&result[slen(&path[i])], "\n^\nError, unresolver symbol - ':*?«<>|\\'");
+      return Error_Symbol;
+    }
+  }
+  santok(path, delim, output, count);
+  return 0;
+}
+
+/*delim: +
+paths:
+/cygdrive/c/Windows/system32+/cygdrive/e/Distrib/msoffice.exe+/home/alex/prog/lab4.c
+Выход:
+new paths: C:\Windows\system32+E:\Distrib\msoffice.exe+/home/alex/prog/lab4.c*/
+char *process(char *path, const char delim) {
+  char *result = (char *)malloc(MAX_STRING);
+  char *output[12];
+  int count = stok(path, delim, output);
+  for (int i = 0; i < count; i++) {
+    if (!replace(output[i], "/cygdrive/", "")) {
+      output[i][0] = to_upper(output[i][0]);
+      replace(output[i], "/", ":\\");
+      replace_all(output[i], "/", "\\");
+    }
+  }
+  return santok(result, delim, output, count);
+}
+
+void output(char *path) { printf("%s\n\n", path); }
